@@ -17,6 +17,7 @@
 
 #define MAX_LAYERS 6
 
+Gfx_Font *font; // Declare the font at a global scope
 
 typedef struct Tile_Layer {
 	Gfx_Image *tile_images[TILE_COUNT];
@@ -55,6 +56,9 @@ int entry(int argc, char **argv) {
 	window.x = 200;
 	window.y = 90;
 	window.clear_color = hex_to_rgba(0x6495EDff);
+
+	font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_heap_allocator());
+    assert(font, "Failed loading arial.ttf");
 	
 	camera_view = m4_scalar(1.0);
 
@@ -104,7 +108,239 @@ Vector2 get_mouse_world_pos() {
 	return screen_to_world(v2(input_frame.mouse_x, input_frame.mouse_y));
 }
 
+// used to print text
+void int_to_string(int value, char* buffer) {
+    char* ptr = buffer;
+    if (value < 0) {
+        *ptr++ = '-';
+        value = -value;
+    }
+    
+    // Convert the number to string (reverse order)
+    char* start = ptr;
+    do {
+        *ptr++ = '0' + (value % 10);
+        value /= 10;
+    } while (value > 0);
+    
+    *ptr = '\0';
+    
+    // Reverse the string to correct the order
+    char* end = ptr - 1;
+    while (start < end) {
+        char temp = *start;
+        *start++ = *end;
+        *end-- = temp;
+    }
+}
+
 void update_editor() {
+    const float32 cam_move_speed = 400.0;
+    Vector2 cam_move_axis = v2(0, 0);
+    if (is_key_down('A')) {
+        cam_move_axis.x -= 1.0;
+    }
+    if (is_key_down('D')) {
+        cam_move_axis.x += 1.0;
+    }
+    if (is_key_down('S')) {
+        cam_move_axis.y -= 1.0;
+    }
+    if (is_key_down('W')) {
+        cam_move_axis.y += 1.0;
+    }
+    
+    Vector2 cam_move = v2_mulf(cam_move_axis, delta_time * cam_move_speed);
+    camera_view = m4_translate(camera_view, v3(v2_expand(cam_move), 0));
+    draw_frame.view = camera_view;
+
+    // Define the fixed range for tiles
+    int start_tile = -32;
+    int end_tile = 32;
+
+    // Draw the grid with coordinates
+    for (int i = start_tile; i <= end_tile; i++) {
+        for (int j = start_tile; j <= end_tile; j++) {
+            Vector2 pos = v2(i * TILE_WIDTH, j * TILE_HEIGHT);
+            Vector4 tile_color = ((i + j) % 2 == 0) ? v4(1.0, 1.0, 1.0, 1.0) : v4(0.7, 0.7, 0.7, 1.0);
+            draw_rect(pos, v2(TILE_WIDTH, TILE_HEIGHT), tile_color);
+            
+            // Draw the grid coordinates as text
+            char text[32];
+            char* text_ptr = text;
+            *text_ptr++ = '(';
+            int_to_string(i, text_ptr);
+            while (*text_ptr) text_ptr++;
+            *text_ptr++ = ',';
+            *text_ptr++ = ' ';
+            int_to_string(j, text_ptr);
+            while (*text_ptr) text_ptr++;
+            *text_ptr++ = ')';
+            *text_ptr = '\0';
+
+            Vector2 text_pos = v2_add(pos, v2(5, TILE_HEIGHT / 2 - 10)); // Adjust the position for centering
+            draw_text(font, STR(text), 16, text_pos, v2(1.0, 1.0), v4(0.0, 0.0, 0.0, 1.0));
+        }
+    }
+}
+
+void _update_editor_checker_grid_text() {
+    const float32 cam_move_speed = 400.0;
+    Vector2 cam_move_axis = v2(0, 0);
+    if (is_key_down('A')) {
+        cam_move_axis.x -= 1.0;
+    }
+    if (is_key_down('D')) {
+        cam_move_axis.x += 1.0;
+    }
+    if (is_key_down('S')) {
+        cam_move_axis.y -= 1.0;
+    }
+    if (is_key_down('W')) {
+        cam_move_axis.y += 1.0;
+    }
+    
+    Vector2 cam_move = v2_mulf(cam_move_axis, delta_time * cam_move_speed);
+    camera_view = m4_translate(camera_view, v3(v2_expand(cam_move), 0));
+    draw_frame.view = camera_view;
+
+    // Calculate the number of tiles to fit the screen
+    int tile_count_x = window.width / TILE_WIDTH;
+    int tile_count_y = window.height / TILE_HEIGHT;
+
+    // Adjust the start position to (0, 0)
+    Vector2 start_pos = v2(0, 0);
+
+    // Draw the expanded grid with coordinates
+    for (int i = 0; i <= tile_count_x; i++) {
+        for (int j = 0; j <= tile_count_y; j++) {
+            Vector2 pos = v2_add(start_pos, v2(i * TILE_WIDTH, j * TILE_HEIGHT));
+            Vector4 tile_color = ((i + j) % 2 == 0) ? v4(1.0, 1.0, 1.0, 1.0) : v4(0.7, 0.7, 0.7, 1.0);
+            draw_rect(pos, v2(TILE_WIDTH, TILE_HEIGHT), tile_color);
+            
+            // Draw the grid coordinates as text
+            char text[32];
+            char* text_ptr = text;
+            *text_ptr++ = '(';
+            int_to_string(i, text_ptr);
+            while (*text_ptr) text_ptr++;
+            *text_ptr++ = ',';
+            *text_ptr++ = ' ';
+            int_to_string(j, text_ptr);
+            while (*text_ptr) text_ptr++;
+            *text_ptr++ = ')';
+            *text_ptr = '\0';
+            
+            Vector2 text_pos = v2_add(pos, v2(5, TILE_HEIGHT / 2 - 10)); // Adjust the position for centering
+            draw_text(font, STR(text), 16, text_pos, v2(1.0, 1.0), v4(0.0, 0.0, 0.0, 1.0));
+        }
+    }
+}
+
+
+void _update_editor_checker_screen() {
+    const float32 cam_move_speed = 400.0;
+    Vector2 cam_move_axis = v2(0, 0);
+    if (is_key_down('A')) {
+        cam_move_axis.x -= 1.0;
+    }
+    if (is_key_down('D')) {
+        cam_move_axis.x += 1.0;
+    }
+    if (is_key_down('S')) {
+        cam_move_axis.y -= 1.0;
+    }
+    if (is_key_down('W')) {
+        cam_move_axis.y += 1.0;
+    }
+    
+    Vector2 cam_move = v2_mulf(cam_move_axis, delta_time * cam_move_speed);
+    camera_view = m4_translate(camera_view, v3(v2_expand(cam_move), 0));
+    draw_frame.view = camera_view;
+
+    // Calculate the number of tiles to fit the screen
+    int tile_count_x = window.width / TILE_WIDTH;
+    int tile_count_y = window.height / TILE_HEIGHT;
+
+    // Adjust the start position to center the grid
+    Vector2 start_pos = v2(-tile_count_x * TILE_WIDTH / 2, -tile_count_y * TILE_HEIGHT / 2);
+
+    // Draw the expanded grid
+    for (int i = 0; i <= tile_count_x; i++) {
+        for (int j = 0; j <= tile_count_y; j++) {
+            Vector2 pos = v2_add(start_pos, v2(i * TILE_WIDTH, j * TILE_HEIGHT));
+            Vector4 tile_color = ((i + j) % 2 == 0) ? v4(1.0, 1.0, 1.0, 1.0) : v4(0.7, 0.7, 0.7, 1.0);
+            draw_rect(pos, v2(TILE_WIDTH, TILE_HEIGHT), tile_color);
+        }
+    }
+}
+
+
+
+// This renders a checker box
+void _update_editor_checker_box() {
+    const float32 cam_move_speed = 400.0;
+    Vector2 cam_move_axis = v2(0, 0);
+    if (is_key_down('A')) {
+        cam_move_axis.x -= 1.0;
+    }
+    if (is_key_down('D')) {
+        cam_move_axis.x += 1.0;
+    }
+    if (is_key_down('S')) {
+        cam_move_axis.y -= 1.0;
+    }
+    if (is_key_down('W')) {
+        cam_move_axis.y += 1.0;
+    }
+    
+    Vector2 cam_move = v2_mulf(cam_move_axis, delta_time * cam_move_speed);
+    camera_view = m4_translate(camera_view, v3(v2_expand(cam_move), 0));
+    draw_frame.view = camera_view;
+    
+    // Draw a small grid of tiles centered on the screen
+    int grid_size = 5;  // 5x5 grid
+    for (int tile_x = -grid_size; tile_x <= grid_size; tile_x++) {
+        for (int tile_y = -grid_size; tile_y <= grid_size; tile_y++) {
+            Vector2 pos = v2(tile_x * TILE_WIDTH, tile_y * TILE_HEIGHT);
+            Vector4 tile_color = ((tile_x + tile_y) % 2 == 0) ? v4(1.0, 1.0, 1.0, 1.0) : v4(0.7, 0.7, 0.7, 1.0);
+            draw_rect(pos, v2(TILE_WIDTH, TILE_HEIGHT), tile_color);
+        }
+    }
+}
+
+// This renders a single box in the center
+void _update_editor_center_box() {
+    const float32 cam_move_speed = 400.0;
+    Vector2 cam_move_axis = v2(0, 0);
+    if (is_key_down('A')) {
+        cam_move_axis.x -= 1.0;
+    }
+    if (is_key_down('D')) {
+        cam_move_axis.x += 1.0;
+    }
+    if (is_key_down('S')) {
+        cam_move_axis.y -= 1.0;
+    }
+    if (is_key_down('W')) {
+        cam_move_axis.y += 1.0;
+    }
+    
+    Vector2 cam_move = v2_mulf(cam_move_axis, delta_time * cam_move_speed);
+    camera_view = m4_translate(camera_view, v3(v2_expand(cam_move), 0));
+    draw_frame.view = camera_view;
+    
+    // Correctly calculate the center position
+    Vector2 center_pos = v2(-TILE_WIDTH / 2, -TILE_HEIGHT / 2);
+    Vector4 tile_color = v4(1.0, 1.0, 1.0, 1.0); // White tile
+
+    // Draw the tile in the center
+    draw_rect(center_pos, v2(TILE_WIDTH, TILE_HEIGHT), tile_color);
+
+    // No need to pop_z_layer here since no Z-layer was pushed
+}
+
+void _update_editor() {
 	
 	const float32 cam_move_speed = 400.0;
 	Vector2 cam_move_axis = v2(0, 0);
