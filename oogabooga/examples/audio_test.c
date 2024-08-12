@@ -28,10 +28,10 @@ int entry(int argc, char **argv) {
 	
 	Audio_Source bruh, song;
 	
-	bool bruh_ok = audio_open_source_load(&bruh, STR("oogabooga/examples/bruh.wav"), heap);
+	bool bruh_ok = audio_open_source_load(&bruh, STR("../oogabooga/examples/bruh.wav"), heap);
 	assert(bruh_ok, "Could not load bruh.wav");
 
-	bool song_ok = audio_open_source_stream(&song, STR("oogabooga/examples/song.ogg"), heap);
+	bool song_ok = audio_open_source_stream(&song, STR("../oogabooga/examples/song.ogg"), heap);
 	assert(song_ok, "Could not load song.ogg");
 	
 	// By default, audio sources will be converted to the same format as the output buffer.
@@ -64,7 +64,7 @@ int entry(int argc, char **argv) {
 		
 		if (is_key_just_pressed(MOUSE_BUTTON_RIGHT)) {
 			// Easy mode (when you don't care and just want to play a clip)
-			play_one_audio_clip(STR("oogabooga/examples/block.wav"));
+			play_one_audio_clip(STR("../oogabooga/examples/block.wav"));
 		}
 		
 		
@@ -95,7 +95,7 @@ int entry(int argc, char **argv) {
 			config.playback_speed        = get_random_float32_in_range(0.8, 1.2);
 			config.enable_spacialization = true;
 			config.position_ndc          = v3(get_random_float32_in_range(-1, 1), get_random_float32_in_range(-1, 1), 0);
-			play_one_audio_clip_with_config(STR("oogabooga/examples/bruh.wav"), config);
+			play_one_audio_clip_with_config(STR("../oogabooga/examples/bruh.wav"), config);
 		}
 		rect.y -= FONT_HEIGHT*3;
 		if (button(STR("Reset song"), rect.xy, rect.zw, false)) {
