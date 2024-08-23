@@ -52,9 +52,11 @@ int entry(int argc, char **argv) {
 
 		player_pos = v2_add(player_pos, v2_mulf(input_axis, 32.0 * delta_t));
 
+		Vector2 size = v2(16.0, 16.0);
 		Matrix4 xform = m4_scalar(1.0);
 		xform = m4_translate(xform, v3(player_pos.x, player_pos.y, 0));
-		draw_image_xform(player, xform, v2(16.0, 16.0), COLOR_RED);
+		draw_image_xform(player, xform, size, COLOR_RED);
+		xform = m4_translate(xform, v3(size.x * -0.5, 0.0, 0));
 		
 		gfx_update();
 		seconds_counter += delta_t;
