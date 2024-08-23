@@ -1,133 +1,226 @@
-typedef enum EntityArchetype {
-	arch_nil = 0,
-	arch_player = 1,
-	arch_tree = 2,
-	arch_rock = 3,
+// SPRITE STRUCTURE AND ENUM DECLARATION
+
+// Structure representing a Sprite, containing a pointer to the image and its size
+typedef struct Sprite
+{
+	Gfx_Image *image;
+	Vector2 size;
+} Sprite;
+
+// Enum for different sprite IDs, used to reference specific sprites
+typedef enum SpriteID
+{
+	SPRITE_nil,	   // Null sprite (default)
+	SPRITE_player, // Player sprite
+	SPRITE_rock,   // Rock sprite
+	SPRITE_MAX	   // Maximum number of sprites (used for array sizing)
+} SpriteID;
+
+// Array to hold all sprites in the game
+Sprite sprites[SPRITE_MAX];
+
+// Function to retrieve a sprite by its ID
+Sprite *get_sprite(SpriteID id)
+{
+	if (id >= 0 && id < SPRITE_MAX)
+	{
+		return &sprites[id];
+	}
+	// Return a default sprite if the ID is out of bounds
+	return &sprites[SPRITE_nil];
+}
+
+// ENTITY STRUCTURE AND ENUM DECLARATION
+
+// Enum representing different entity archetypes (types of entities)
+typedef enum EntityArchetype
+{
+	arch_nil = 0,	 // Null archetype (default)
+	arch_player = 1, // Player archetype
+	arch_tree = 2,	 // Tree archetype
+	arch_rock = 3,	 // Rock archetype
 } EntityArchetype;
 
-typedef struct Entity {
-	bool is_valid;
-	EntityArchetype arch;
-	Vector2 pos;
+// Structure representing an Entity, containing its attributes and state
+typedef struct Entity
+{
+	bool is_valid;		  // Flag to indicate if the entity is active/valid
+	EntityArchetype arch; // The archetype/type of the entity
+	Vector2 pos;		  // Position of the entity in the world
+	bool render_sprite;	  // Flag to determine if the entity should render a sprite
+	SpriteID sprite_id;	  // ID of the sprite to be rendered for this entity
 } Entity;
+
+// Maximum number of entities allowed in the world
 #define MAX_ENTITY_COUNT 1024
 
-typedef struct World {
+// World structure containing all entities
+typedef struct World
+{
 	Entity entities[MAX_ENTITY_COUNT];
 } World;
-World* world = 0;
 
-Entity* entity_create() {
-	Entity* entity_found = 0;
-	for (int i = 0; i < MAX_ENTITY_COUNT; i++) {
-		Entity* existing_entity = &world->entities[i];
-		if (!existing_entity->is_valid) {
+// Global pointer to the world instance
+World *world = 0;
+
+// ENTITY MANAGEMENT FUNCTIONS
+
+// Function to create a new entity
+Entity *entity_create()
+{
+	Entity *entity_found = 0;
+	for (int i = 0; i < MAX_ENTITY_COUNT; i++)
+	{
+		Entity *existing_entity = &world->entities[i];
+		if (!existing_entity->is_valid)
+		{
 			entity_found = existing_entity;
 			break;
 		}
 	}
+	// Ensure an entity was found
 	assert(entity_found, "No more free entities!");
+	entity_found->is_valid = true;
 	return entity_found;
 }
 
-void entity_destroy(Entity* entity) {
-	memset(entity, 0, sizeof(Entity));
+// Function to destroy an entity and reset its data
+void entity_destroy(Entity *entity)
+{
+	memset(entity, 0, sizeof(Entity)); // Clear the memory of the entity
 }
 
-void setup_rock(Entity* en) {
+// ENTITY SETUP FUNCTIONS
+
+// Function to setup a rock entity
+void setup_rock(Entity *en)
+{
 	en->arch = arch_rock;
-	//...
+	en->sprite_id = SPRITE_rock;
 }
 
-int entry(int argc, char **argv) {
-	
+// Function to setup a player entity
+void setup_player(Entity *en)
+{
+	en->arch = arch_player;
+	en->sprite_id = SPRITE_player;
+}
+
+// ENTRY POINT OF THE PROGRAM
+
+int entry(int argc, char **argv)
+{
+	// Window settings
 	window.title = STR("Willowbrook");
-	window.scaled_width = 1280; // We need to set the scaled size if we want to handle system scaling (DPI)
-	window.scaled_height = 720; 
+	window.scaled_width = 1280; // Handle system scaling (DPI)
+	window.scaled_height = 720;
 	window.x = 200;
 	window.y = 90;
 	window.clear_color = hex_to_rgba(0x2D2D34ff);
 
-	world = alloc(get_heap_allocator(), sizeof(world));
+	// Allocate memory for the world
+	world = alloc(get_heap_allocator(), sizeof(World));
 
-	// Load Tileset
-	Gfx_Image* player = load_image_from_disk(fixed_string("assets/player.png"), get_heap_allocator());
-	assert(player, "tileset failed to load");
-	Gfx_Image* rock = load_image_from_disk(fixed_string("assets/rock.png"), get_heap_allocator());
-	assert(player, "tileset failed to load");
+	// LOAD SPRITES
+	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/player.png"), get_heap_allocator()), .size = v2(16.0, 16.0)};
+	sprites[SPRITE_rock] = (Sprite){.image = load_image_from_disk(STR("assets/rock.png"), get_heap_allocator()), .size = v2(16.0, 16.0)};
 
-	Entity* player_en = entity_create();
-
-	for (int i = 0; i < 10; i++) {
-		Entity* en = entity_create();
+	// CREATE ENTITIES
+	// Note: The order of entity creation affects rendering order (last created is rendered on top)
+	for (int i = 0; i < 10; i++)
+	{
+		Entity *en = entity_create();
 		setup_rock(en);
-		en->pos = v2(get_random_float32_in_range(-10.0f, 10.0f),get_random_float32_in_range(-10.0f, 10.0f));
+		en->pos = v2(get_random_float32_in_range(-10, 10), get_random_float32_in_range(-10, 10));
 	}
 
+	// Create and setup the player entity
+	Entity *player_en = entity_create();
+	setup_player(player_en);
+
+	// GAME LOOP VARIABLES
 	float64 seconds_counter = 0.0;
 	s32 frame_count = 0;
+	float64 last_time = os_get_elapsed_seconds();
 
-	float64 last_time = os_get_current_time_in_seconds();
-	 
-
-	while (!window.should_close) {
+	// MAIN GAME LOOP
+	while (!window.should_close)
+	{
 		reset_temporary_storage();
 
+		// Setup the camera projection and transformation
 		draw_frame.projection = m4_make_orthographic_projection(window.width * -0.5, window.width * 0.5, window.height * -0.5, window.height * 0.5, -1, 10);
+		float zoom = 1.0;
+		draw_frame.camera_xform = m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0));
 
-		float zoom = 5.3;
-		draw_frame.view = m4_make_scale(v3(1.0/zoom, 1.0/zoom, 1.0));
-
-		float64 now = os_get_current_time_in_seconds();
+		// Calculate delta time
+		float64 now = os_get_elapsed_seconds();
 		float64 delta_t = now - last_time;
 		last_time = now;
-		
-		os_update(); 
 
+		// Update OS events (input handling, etc.)
+		os_update();
 
+		// RENDERING
+		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
+		{
+			Entity *en = &world->entities[i];
+			if (en->is_valid)
+			{
+				// Render the entity based on its archetype and sprite
+				switch (en->arch)
+				{
+				default:
+				{
+					Sprite *sprite = get_sprite(en->sprite_id);
+					Matrix4 xform = m4_scalar(1.0);
+					xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
+					xform = m4_translate(xform, v3(sprite->size.x * -0.5, 0.0, 0));
+					draw_image_xform(sprite->image, xform, sprite->size, COLOR_WHITE);
+				}
+				break;
+				}
+			}
+		}
 
-		if (is_key_just_pressed(KEY_ESCAPE)) {
+		// Exit game if ESCAPE key is pressed
+		if (is_key_just_pressed(KEY_ESCAPE))
+		{
 			window.should_close = true;
 		}
 
+		// PLAYER MOVEMENT INPUT HANDLING
 		Vector2 input_axis = v2(0, 0);
-		if (is_key_down('A')) {
+		if (is_key_down('A'))
+		{
 			input_axis.x -= 1.0;
 		}
-		if (is_key_down('D')) {
+		if (is_key_down('D'))
+		{
 			input_axis.x += 1.0;
 		}
-		if (is_key_down('S')) {
+		if (is_key_down('S'))
+		{
 			input_axis.y -= 1.0;
 		}
-		if (is_key_down('W')) {
+		if (is_key_down('W'))
+		{
 			input_axis.y += 1.0;
 		}
 
+		// Update player position based on input and delta time
 		player_en->pos = v2_add(player_en->pos, v2_mulf(input_axis, 32.0 * delta_t));
 
-		{
-			Vector2 size = v2(16.0, 16.0);
-			Matrix4 xform = m4_scalar(1.0);
-			xform = m4_translate(xform, v3(player_en->pos.x, player_en->pos.y, 0));
-			draw_image_xform(player, xform, size, COLOR_RED);
-			xform = m4_translate(xform, v3(size.x * -0.5, 0.0, 0));
-		}
-
-		{
-			Vector2 size = v2(16.0, 16.0);
-			Matrix4 xform = m4_scalar(1.0);
-			xform = m4_translate(xform, v3(size.x * -0.5, 0.0, 0));
-			draw_image_xform(rock, xform, size, COLOR_RED);
-		}
-		
-		
+		// Update graphics
 		gfx_update();
 		seconds_counter += delta_t;
 		frame_count += 1;
-		if (seconds_counter > 1.0) {
+
+		// FPS counter (logs frames per second every second)
+		if (seconds_counter > 1.0)
+		{
 			log("fps: %i", frame_count);
-			seconds_counter  = 0.0;
+			seconds_counter = 0.0;
 			frame_count = 0;
 		}
 	}
