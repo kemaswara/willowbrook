@@ -106,6 +106,25 @@ void setup_player(Entity *en)
 	en->sprite_id = SPRITE_player;
 }
 
+// UTILITY FUNCTIONS
+void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count, Gfx_Font *font)
+{
+	// Update counters
+	*seconds_counter += delta_t;
+	*frame_count += 1;
+
+	// FPS counter (logs frames per second every second)
+	if (*seconds_counter > 1.0)
+	{
+		log("fps: %i", *frame_count);
+		*seconds_counter = 0.0;
+		*frame_count = 0;
+	}
+
+	// Draw FPS Counter
+	draw_text(font, tprint("%04i fps", *frame_count), 12, v2((window.pixel_width / 2) - 100, (window.pixel_height / 2) - 50), v2(1, 1), COLOR_WHITE);
+}
+
 // ENTRY POINT OF THE PROGRAM
 
 int entry(int argc, char **argv)
@@ -120,6 +139,14 @@ int entry(int argc, char **argv)
 
 	// Allocate memory for the world
 	world = alloc(get_heap_allocator(), sizeof(World));
+
+	// LOAD FONT
+	Gfx_Font *font_mono = load_font_from_disk(STR("assets/fonts/monogram/ttf/monogram.ttf"), get_heap_allocator());
+	assert(font_mono, "Failed loading monogram.ttf");
+	Gfx_Font *font_base = load_font_from_disk(STR("assets/fonts/peaberry/ttf/peaberry_base.ttf"), get_heap_allocator());
+	assert(font_base, "Failed loading peaberry_base.ttf");
+
+	const u32 font_height = 48;
 
 	// LOAD SPRITES
 	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/player.png"), get_heap_allocator()), .size = v2(16.0, 16.0)};
@@ -183,6 +210,19 @@ int entry(int argc, char **argv)
 			}
 		}
 
+		// FPS counter (logs frames per second every second)
+		// seconds_counter += delta_t;
+		// frame_count += 1;
+		// if (seconds_counter > 1.0)
+		// {
+		// 	log("fps: %i", frame_count);
+		// 	seconds_counter = 0.0;
+		// 	frame_count = 0;
+		// }
+
+		// Draw FPS Counter
+		draw_fps_counter(delta_t, &seconds_counter, &frame_count, font_base);
+
 		// Exit game if ESCAPE key is pressed
 		if (is_key_just_pressed(KEY_ESCAPE))
 		{
@@ -213,16 +253,6 @@ int entry(int argc, char **argv)
 
 		// Update graphics
 		gfx_update();
-		seconds_counter += delta_t;
-		frame_count += 1;
-
-		// FPS counter (logs frames per second every second)
-		if (seconds_counter > 1.0)
-		{
-			log("fps: %i", frame_count);
-			seconds_counter = 0.0;
-			frame_count = 0;
-		}
 	}
 
 	return 0;
