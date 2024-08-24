@@ -139,11 +139,14 @@ void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count,
 	*seconds_counter += delta_t;
 	*frame_count += 1;
 
-	// FPS counter (logs frames per second every second)
-	if (*seconds_counter > 1.0)
+	// FPS counter (calculates frames per second)
+	s32 fps = *frame_count / *seconds_counter;
+
+	// Log FPS once every second
+	if (*seconds_counter >= 1.0)
 	{
-		log("fps: %i", *frame_count);
-		*seconds_counter = 0.0;
+		log("fps: %i", fps);
+		*seconds_counter -= 1.0;
 		*frame_count = 0;
 	}
 
@@ -152,7 +155,7 @@ void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count,
 	float top_right_y = -(window.pixel_height / 2) + 50;
 
 	// Draw FPS Counter
-	draw_text(font, tprint("%04i fps", *frame_count), 12, v2(camera_pos->x + top_right_x, camera_pos->y - top_right_y), v2(1, 1), COLOR_WHITE);
+	draw_text(font, tprint("%04i fps", fps), 12, v2(camera_pos->x + top_right_x, camera_pos->y - top_right_y), v2(1, 1), COLOR_WHITE);
 }
 
 // ENTRY POINT OF THE PROGRAM
@@ -220,7 +223,7 @@ int entry(int argc, char **argv)
 		// Camera
 
 		Vector2 target_pos = player_en->pos;
-		animate_v2_to_target(&camera_pos, target_pos, delta_t, 15.0f);
+		animate_v2_to_target(&camera_pos, target_pos, delta_t, 3.0f);
 
 		{
 			draw_frame.camera_xform = m4_make_scale(v3(1.0, 1.0, 1.0));
