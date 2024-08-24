@@ -1,3 +1,29 @@
+bool almost_equals(float a, float b, float epsilon)
+{
+	return fabs(a - b) <= epsilon;
+}
+
+/**
+ * Smoothing to target graphed
+ * https://chatgpt.com/share/4a44bb83-87a7-4abe-94d6-03066681bc2d
+ */
+bool animate_f32_to_target(float *value, float target, float delta_t, float rate)
+{
+	*value += (target - *value) * (1.0 - pow(2.0f, -rate * delta_t));
+	if (almost_equals(*value, target, 0.001f))
+	{
+		*value = target;
+		return true; // reached
+	}
+	return false;
+}
+
+void animate_v2_to_target(Vector2 *value, Vector2 target, float delta_t, float rate)
+{
+	animate_f32_to_target(&(value->x), target.x, delta_t, rate);
+	animate_f32_to_target(&(value->y), target.y, delta_t, rate);
+}
+
 // SPRITE STRUCTURE AND ENUM DECLARATION
 
 // Structure representing a Sprite, containing a pointer to the image and its size
@@ -107,7 +133,7 @@ void setup_player(Entity *en)
 }
 
 // UTILITY FUNCTIONS
-void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count, Gfx_Font *font)
+void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count, Gfx_Font *font, Vector2 *camera_pos)
 {
 	// Update counters
 	*seconds_counter += delta_t;
@@ -121,8 +147,12 @@ void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count,
 		*frame_count = 0;
 	}
 
+	// Calculate the top-right position relative to the center of the screen (0,0)
+	float top_right_x = (window.pixel_width / 2) - 100;
+	float top_right_y = -(window.pixel_height / 2) + 50;
+
 	// Draw FPS Counter
-	draw_text(font, tprint("%04i fps", *frame_count), 12, v2((window.pixel_width / 2) - 100, (window.pixel_height / 2) - 50), v2(1, 1), COLOR_WHITE);
+	draw_text(font, tprint("%04i fps", *frame_count), 12, v2(camera_pos->x + top_right_x, camera_pos->y - top_right_y), v2(1, 1), COLOR_WHITE);
 }
 
 // ENTRY POINT OF THE PROGRAM
@@ -158,7 +188,7 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_rock(en);
-		en->pos = v2(get_random_float32_in_range(-10, 10), get_random_float32_in_range(-10, 10));
+		en->pos = v2(get_random_float32_in_range(-500, 500), get_random_float32_in_range(-500, 500));
 	}
 
 	// Create and setup the player entity
@@ -170,6 +200,10 @@ int entry(int argc, char **argv)
 	s32 frame_count = 0;
 	float64 last_time = os_get_elapsed_seconds();
 
+	// CAMERA VARIABLES
+	float zoom = 1.0;
+	Vector2 camera_pos = v2(0, 0);
+
 	// MAIN GAME LOOP
 	while (!window.should_close)
 	{
@@ -177,13 +211,22 @@ int entry(int argc, char **argv)
 
 		// Setup the camera projection and transformation
 		draw_frame.projection = m4_make_orthographic_projection(window.width * -0.5, window.width * 0.5, window.height * -0.5, window.height * 0.5, -1, 10);
-		float zoom = 1.0;
-		draw_frame.camera_xform = m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0));
 
 		// Calculate delta time
 		float64 now = os_get_elapsed_seconds();
 		float64 delta_t = now - last_time;
 		last_time = now;
+
+		// Camera
+
+		Vector2 target_pos = player_en->pos;
+		animate_v2_to_target(&camera_pos, target_pos, delta_t, 15.0f);
+
+		{
+			draw_frame.camera_xform = m4_make_scale(v3(1.0, 1.0, 1.0));
+			draw_frame.camera_xform = m4_mul(draw_frame.camera_xform, m4_make_translation(v3(camera_pos.x, camera_pos.y, 0)));
+			draw_frame.camera_xform = m4_mul(draw_frame.camera_xform, m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0)));
+		}
 
 		// Update OS events (input handling, etc.)
 		os_update();
@@ -210,18 +253,8 @@ int entry(int argc, char **argv)
 			}
 		}
 
-		// FPS counter (logs frames per second every second)
-		// seconds_counter += delta_t;
-		// frame_count += 1;
-		// if (seconds_counter > 1.0)
-		// {
-		// 	log("fps: %i", frame_count);
-		// 	seconds_counter = 0.0;
-		// 	frame_count = 0;
-		// }
-
 		// Draw FPS Counter
-		draw_fps_counter(delta_t, &seconds_counter, &frame_count, font_base);
+		draw_fps_counter(delta_t, &seconds_counter, &frame_count, font_base, &camera_pos);
 
 		// Exit game if ESCAPE key is pressed
 		if (is_key_just_pressed(KEY_ESCAPE))
