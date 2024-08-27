@@ -77,6 +77,16 @@ typedef struct Entity
 	SpriteID sprite_id;	  // ID of the sprite to be rendered for this entity
 } Entity;
 
+typedef struct Stats
+{
+	float hunger;
+	float energy;
+	float hygiene;
+	float social;
+	float fun;
+	float bladder;
+} Stats;
+
 // Maximum number of entities allowed in the world
 #define MAX_ENTITY_COUNT 1024
 
@@ -158,6 +168,73 @@ void draw_fps_counter(float delta_t, float64 *seconds_counter, s32 *frame_count,
 	draw_text(font, tprint("%04i fps", fps), 12, v2(camera_pos->x + top_right_x, camera_pos->y - top_right_y), v2(1, 1), COLOR_WHITE);
 }
 
+// STATS FUNCTIONS
+void init_stats(Stats *stats)
+{
+	stats->hunger = 100;
+	stats->energy = 100;
+	stats->hygiene = 100;
+	stats->social = 100;
+	stats->bladder = 100;
+}
+
+void update_stats(Stats *stats, float delta_t)
+{
+	stats->hunger -= 1 * delta_t;
+	stats->energy -= 2 * delta_t;
+	stats->hygiene -= 1 * delta_t;
+	stats->social -= 1 * delta_t;
+	stats->bladder -= 1 * delta_t;
+
+	// Ensure stats don't go below 0
+	if (stats->hunger < 0)
+		stats->hunger = 0;
+	if (stats->energy < 0)
+		stats->energy = 0;
+	if (stats->hygiene < 0)
+		stats->hygiene = 0;
+	if (stats->social < 0)
+		stats->social = 0;
+	if (stats->bladder < 0)
+		stats->bladder = 0;
+}
+
+void eat_food(Stats *stats, int food_value)
+{
+	stats->hunger += food_value;
+	if (stats->hunger > 100)
+		stats->hunger = 100; // Cap the value at 100
+}
+
+void sleep(Stats *stats, int sleep_value)
+{
+	stats->energy += sleep_value;
+	if (stats->energy > 100)
+		stats->energy = 100;
+}
+
+void draw_stat_text(Gfx_Font *font, int value, const char *label, float x, float y, Vector2 *camera_pos)
+{
+	// Draw the value at the top
+	draw_text(font, tprint("%d", value), 12, v2(camera_pos->x + x, camera_pos->y + y), v2(1, 1), COLOR_WHITE);
+
+	// Draw the label just below the value
+	draw_text(font, tprint("%s", label), 12, v2(camera_pos->x + x, camera_pos->y + y + 15), v2(1, 1), COLOR_WHITE);
+}
+
+void draw_stats(Stats *stats, Gfx_Font *font, Vector2 *camera_pos)
+{
+	float bottom_y = -(window.pixel_height / 2) + 100; // Offset from the bottom of the screen
+	float start_x = 0;								   // Starting x position
+	float spacing_x = 80;							   // Horizontal space between each stat
+
+	draw_stat_text(font, (int)stats->hunger, "hunger", start_x, bottom_y, camera_pos);
+	draw_stat_text(font, (int)stats->energy, "energy", start_x + spacing_x, bottom_y, camera_pos);
+	draw_stat_text(font, (int)stats->hygiene, "hygiene", start_x + 2 * spacing_x, bottom_y, camera_pos);
+	draw_stat_text(font, (int)stats->social, "social", start_x + 3 * spacing_x, bottom_y, camera_pos);
+	draw_stat_text(font, (int)stats->bladder, "bladder", start_x + 4 * spacing_x, bottom_y, camera_pos);
+}
+
 // ENTRY POINT OF THE PROGRAM
 
 int entry(int argc, char **argv)
@@ -207,6 +284,10 @@ int entry(int argc, char **argv)
 	float zoom = 1.0;
 	Vector2 camera_pos = v2(0, 0);
 
+	// STATS VARIABLES
+	Stats player_stats;
+	init_stats(&player_stats);
+
 	// MAIN GAME LOOP
 	while (!window.should_close)
 	{
@@ -230,6 +311,10 @@ int entry(int argc, char **argv)
 			draw_frame.camera_xform = m4_mul(draw_frame.camera_xform, m4_make_translation(v3(camera_pos.x, camera_pos.y, 0)));
 			draw_frame.camera_xform = m4_mul(draw_frame.camera_xform, m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0)));
 		}
+
+		// Stats
+		update_stats(&player_stats, delta_t);
+		draw_stats(&player_stats, font_base, &camera_pos);
 
 		// Update OS events (input handling, etc.)
 		os_update();

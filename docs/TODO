@@ -1,0 +1,34 @@
+[x] logger
+[x] game loop
+[ ] audio
+[ ] tile map
+
+BROGRAMMING
+[x] Basic player movement
+[x] Coordinate system & sizing
+[x] Entity structure & sprite system
+[ ] Basic tile system
+[ ] Item system
+[ ] Inventory system & UI
+[ ] Crafting system
+[ ] Research system
+
+FEATURES
+[x] Basic stats
+
+VISUAL
+[ ] 8 Directional Sprites
+
+DESIGN
+[x] Basic Gameplay Diagrams
+[x] Core Ideas Pass #1
+[ ] Game Loop
+[ ] Stats
+[ ] UI Screens
+
+LEARN
+[ ] Transformations https://learnopengl.com/Getting-started/Transformations
+    [x] Vectors 
+    [ ] Matrices
+[ ] Coordinate Systems https://learnopengl.com/Getting-started/Coordinate-Systems
+[ ] C Operator Precedence https://en.cppreference.com/w/c/language/operator_precedence
